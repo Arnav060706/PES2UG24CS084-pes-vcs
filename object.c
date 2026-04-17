@@ -114,8 +114,68 @@ int object_write(ObjectType type, const void *data, size_t len, ObjectID *id_out
     if (len > 0) memcpy(full_obj + header_len, data, len);
 
     compute_hash(full_obj, full_len, id_out);
+    if (object_exists(id_out)) {
+        free(full_obj);
+        return 0;
+    }
+
+    char final_path[512];
+    object_path(id_out, final_path, sizeof(final_path));
+
+    char dir_path[512];
+    snprintf(dir_path, sizeof(dir_path), "%s", final_path);
+    char *last_slash = strrchr(dir_path, '/');
+    if (!last_slash) {
+        free(full_obj);
+        return -1;
+    }
+    *last_slash = '\0';
+    if (mkdir(dir_path, 0755) != 0 && access(dir_path, F_OK) != 0) {
+        free(full_obj);
+        return -1;
+    }
+
+    char tmp_path[560];
+    snprintf(tmp_path, sizeof(tmp_path), "%s.tmp.%ld", final_path, (long)getpid());
+
+    int fd = open(tmp_path, O_CREAT | O_WRONLY | O_TRUNC, 0644);
+    if (fd < 0) {
+        free(full_obj);
+        return -1;
+    }
+
+    ssize_t total = 0;
+    while (total < (ssize_t)full_len) {
+        ssize_t w = write(fd, full_obj + total, full_len - (size_t)total);
+        if (w <= 0) {
+            close(fd);
+            unlink(tmp_path);
+            free(full_obj);
+            return -1;
+        }
+        total += w;
+    }
+    if (fsync(fd) != 0) {
+        close(fd);
+        unlink(tmp_path);
+        free(full_obj);
+        return -1;
+    }
+    close(fd);
+
+    if (rename(tmp_path, final_path) != 0) {
+        unlink(tmp_path);
+        free(full_obj);
+        return -1;
+    }
+
+    int dfd = open(dir_path, O_RDONLY | O_DIRECTORY);
+    if (dfd >= 0) {
+        fsync(dfd);
+        close(dfd);
+    }
     free(full_obj);
-    return -1;
+    return -0;
 }
 
 // Read an object from the store.
