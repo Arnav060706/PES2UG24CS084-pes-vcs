@@ -201,6 +201,8 @@ int commit_create(const char *message, ObjectID *commit_id_out) {
 
     if (tree_from_index(&commit.tree) != 0) return -1;
 
+
+
     ObjectID parent;
     if (head_read(&parent) == 0) {
         commit.has_parent = 1;
@@ -209,9 +211,12 @@ int commit_create(const char *message, ObjectID *commit_id_out) {
         commit.has_parent = 0;
     }
 
+
+
     snprintf(commit.author, sizeof(commit.author), "%s", pes_author());
     commit.timestamp = (uint64_t)time(NULL);
     snprintf(commit.message, sizeof(commit.message), "%s", message);
+
 
     void *raw = NULL;
     size_t raw_len = 0;
@@ -220,6 +225,6 @@ int commit_create(const char *message, ObjectID *commit_id_out) {
     int rc = object_write(OBJ_COMMIT, raw, raw_len + 1, commit_id_out);
     free(raw);
     if (rc != 0) return -1;
-
     return head_update(commit_id_out);
+
 }
