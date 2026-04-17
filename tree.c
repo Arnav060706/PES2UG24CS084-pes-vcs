@@ -201,6 +201,8 @@ int tree_from_index(ObjectID *id_out) {
                 if (snprintf(child_prefix, sizeof(child_prefix), "%s%s/", prefix, dirname) >= (int)sizeof(child_prefix)) {
                     return -1;
                 }
+                
+                
                 ObjectID child_id;
                 if (write_level(idx, child_prefix, &child_id) != 0) return -1;
 
@@ -227,7 +229,6 @@ int tree_from_index(ObjectID *id_out) {
         free(raw);
         return rc;
     }
-
     return write_level(&index, "", id_out);
     (void)id_out;
     return -1;
